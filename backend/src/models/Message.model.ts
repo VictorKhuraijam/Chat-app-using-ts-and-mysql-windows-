@@ -1,0 +1,111 @@
+import { pool } from '../config/database';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
+
+export interface Message {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  content: string;
+  message_type: 'text' | 'image' | 'file';
+  is_read: boolean;
+  created_at: Date;
+  sender_username?: string;
+  receiver_username?: string;
+}
+
+export class MessageModel {
+  static async create(messageData: {
+    sender_id: number;
+    receiver_id: number;
+    content: string;
+    message_type?: 'text' | 'image' | 'file';
+  }): Promise<Message> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      `INSERT INTO messages (sender_id, receiver_id, content, message_type)
+       VALUES (?, ?, ?, ?)`,
+      [
+        messageData.sender_id,
+        messageData.receiver_id,
+        messageData.content,
+        messageData.message_type || 'text'
+      ]
+    );
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT m.*,
+              s.username as sender_username,
+              r.username as receiver_username
+       FROM messages m
+       JOIN users s ON m.sender_id = s.id
+       JOIN users r ON m.receiver_id = r.id
+       WHERE m.id = ?`,
+      [result.insertId]
+    );
+
+    return rows[0] as Message;
+  }
+
+  static async getConversation(userId1: number, userId2: number, limit: number = 50): Promise<Message[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT m.*,
+              s.username as sender_username,
+              r.username as receiver_username
+       FROM messages m
+       JOIN users s ON m.sender_id = s.id
+       JOIN users r ON m.receiver_id = r.id
+       WHERE (m.sender_id = ? AND m.receiver_id = ?)
+          OR (m.sender_id = ? AND m.receiver_id = ?)
+       ORDER BY m.created_at DESC
+       LIMIT ?`,
+      [userId1, userId2, userId2, userId1, limit]
+    );
+
+    return (rows as Message[]).reverse();
+  }
+
+  static async markAsRead(messageId: number): Promise<void> {
+    await pool.execute(
+      'UPDATE messages SET is_read = TRUE WHERE id = ?',
+      [messageId]
+    );
+  }
+
+  static async getUnreadCount(userId: number): Promise<number> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = FALSE',
+      [userId]
+    );
+
+    return rows[0].count;
+  }
+
+  static async getRecentConversations(userId: number): Promise<any[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+        CASE
+          WHEN m.sender_id = ? THEN m.receiver_id
+          ELSE m.sender_id
+        END as other_user_id,
+        CASE
+          WHEN m.sender_id = ? THEN r.username
+          ELSE s.username
+        END as other_username,
+        CASE
+          WHEN m.sender_id = ? THEN r.avatar
+          ELSE s.avatar
+        END as other_avatar,
+        m.content as last_message,
+        m.created_at as last_message_time,
+        COUNT(CASE WHEN m.receiver_id = ? AND m.is_read = FALSE THEN 1 END) as unread_count
+       FROM messages m
+       JOIN users s ON m.sender_id = s.id
+       JOIN users r ON m.receiver_id = r.id
+       WHERE m.sender_id = ? OR m.receiver_id = ?
+       GROUP BY other_user_id, other_username, other_avatar
+       ORDER BY m.created_at DESC`,
+      [userId, userId, userId, userId, userId, userId]
+    );
+
+    return rows as any[];
+  }
+}
