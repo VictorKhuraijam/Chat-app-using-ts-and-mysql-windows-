@@ -12,9 +12,15 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, loading }) =
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  console.log("Messages :", messages)
+  console.log("Messages Ids",messages.map((m) => m.id))
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+
+
 
   if (loading) {
     return (
@@ -31,17 +37,18 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, loading }) =
           No messages yet. Start a conversation!
         </div>
       ) : (
-        messages.map((message) => {
+        messages.map((message, index) => {
           const isOwnMessage = message.sender_id === user?.id;
+          const key = message.id ?? (message as any).tempId ?? `fallback-${index}`;
           return (
             <div
-              key={message.id}
+              key={key}
               className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
             >
               <div
                 className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                   isOwnMessage
-                    ? 'bg-[#eff6ff] text-white'
+                    ? 'bg-primary-500 text-white'
                     : 'bg-gray-200 text-gray-900'
                 }`}
               >

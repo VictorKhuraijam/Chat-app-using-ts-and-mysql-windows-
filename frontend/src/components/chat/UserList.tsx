@@ -13,10 +13,13 @@ export const UserList: React.FC<UserListProps> = ({ onSelectUser, selectedUserId
   const [loading, setLoading] = useState(true);
   const { onlineUsers } = useSocket();
 
+
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const response = await api.get('/users');
+        console.log("User fetched response :", response)
         setUsers(response.data.users);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -27,6 +30,8 @@ export const UserList: React.FC<UserListProps> = ({ onSelectUser, selectedUserId
 
     fetchUsers();
   }, []);
+
+  console.log("User online :", users)
 
   if (loading) {
     return (

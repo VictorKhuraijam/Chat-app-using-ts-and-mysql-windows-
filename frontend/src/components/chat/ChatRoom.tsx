@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { UserList } from './UserList';
@@ -6,6 +6,7 @@ import type { User, Message } from '../../types';
 import { messageService } from '../../services/messages';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export const ChatRoom: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -14,21 +15,70 @@ export const ChatRoom: React.FC = () => {
   const { socket } = useSocket();
   const { user } = useAuth();
 
+  // Handle incoming messages
+  const handleNewMessage = useCallback((message: Message) => {
+    if (!message || typeof message !== 'object' || !message.id) {
+    console.warn('Received invalid message over socket:', message);
+    return;
+  }
+
+    setMessages(prev => {
+
+        if (!message.id) {
+    console.warn('Skipping message with no ID:', message);
+    return prev;
+    }
+
+      // Check if message already exists to prevent duplicates
+      const messageExists = prev.some(msg => msg.id === message.id);
+      if (messageExists) return prev;
+
+      // Only add message if it's part of current conversation
+      if (selectedUser &&
+          (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)) {
+        return [...prev, message];
+      }
+
+      return prev;
+    });
+  }, [selectedUser]);
+
+  // Socket event listeners
   useEffect(() => {
     if (socket) {
-      socket.on('new_message', (message: Message) => {
-        setMessages(prev => [...prev, message]);
+      socket.on('new_message', handleNewMessage);
+      socket.on('message_sent', handleNewMessage);
+
+      // Handle connection events
+      socket.on('connect', () => {
+        console.log('Socket connected');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        toast.error('Connection error. Please refresh the page.');
       });
 
       return () => {
-        socket.off('new_message');
+        socket.off('new_message', handleNewMessage);
+        socket.off('message_sent', handleNewMessage);
+        socket.off('connect');
+        socket.off('disconnect');
+        socket.off('error');
       };
     }
-  }, [socket]);
+  }, [socket, handleNewMessage]);
 
+  // Load conversation when user changes
   useEffect(() => {
     if (selectedUser) {
       loadConversation(selectedUser.id);
+    } else {
+      setMessages([]);
     }
   }, [selectedUser]);
 
@@ -39,22 +89,63 @@ export const ChatRoom: React.FC = () => {
       setMessages(messages);
     } catch (error) {
       console.error('Error loading conversation:', error);
+      toast.error('Failed to load conversation');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!selectedUser) return;
+    if (!selectedUser || !user) return;
+
+    const tempId:number = parseInt(`temp-${Date.now()}`)
+    // Optimistically add message to UI
+    const tempMessage: Message = {
+      id: tempId, // Temporary ID
+      sender_id: user.id,
+      receiver_id: selectedUser.id,
+      content,
+      message_type: 'text',
+      is_read: false,
+      created_at: new Date(),
+      sender_username: user.username,
+      receiver_username: selectedUser.username,
+      // @ts-ignore: add tempId manually (extend type later if needed)
+    //   tempId,
+    };
+
+    setMessages(prev => [...prev, tempMessage]);
 
     try {
-      await messageService.sendMessage({
+      const { data: message } = await messageService.sendMessage({
         receiver_id: selectedUser.id,
         content,
         message_type: 'text',
       });
+      console.log("Real Message :", message)
+
+      // Update with real message from server
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempMessage.id ? message : msg
+        )
+      );
+
+      // Emit to socket for real-time delivery
+      //this block duplicates msg
+    //   if (socket) {
+    //     socket.emit('send_message', {
+    //       receiver_id: selectedUser.id,
+    //       content,
+    //       message_type: 'text',
+    //     });
+    //   }
     } catch (error) {
       console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
     }
   };
 

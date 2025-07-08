@@ -56,6 +56,8 @@ export const getConversation = async (req: AuthRequest, res: Response): Promise<
       res.status(400).json({ error: 'Invalid user ID' });
       return;
     }
+    console.log('[getConversation Controller] sender:', req.user!.id, 'receiver:', otherUserId);
+
 
     const messages = await MessageModel.getConversation(req.user!.id, otherUserId, limit);
 

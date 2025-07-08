@@ -43,6 +43,11 @@ export const handleSocketConnection = (io: Server) => {
     // Join user to their personal room
     socket.join(`user_${socket.userId}`);
 
+    io.emit('user_online', {
+      userId: socket.userId,
+      username: socket.username,
+    });
+
     // Handle joining a conversation room
     socket.on('join_conversation', (otherUserId: number) => {
       const roomId = [socket.userId, otherUserId].sort().join('_');

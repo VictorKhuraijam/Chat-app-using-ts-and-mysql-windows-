@@ -46,6 +46,16 @@ export class MessageModel {
   }
 
   static async getConversation(userId1: number, userId2: number, limit: number = 50): Promise<Message[]> {
+     const numericLimit = Number(limit);
+
+  if (
+    typeof userId1 !== 'number' ||
+    typeof userId2 !== 'number' ||
+    isNaN(numericLimit)
+  ) {
+    throw new Error('Invalid parameters for getConversation');
+  }
+
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT m.*,
               s.username as sender_username,
@@ -56,9 +66,12 @@ export class MessageModel {
        WHERE (m.sender_id = ? AND m.receiver_id = ?)
           OR (m.sender_id = ? AND m.receiver_id = ?)
        ORDER BY m.created_at DESC
-       LIMIT ?`,
-      [userId1, userId2, userId2, userId1, limit]
+       LIMIT ${numericLimit}`,
+      [userId1, userId2, userId2, userId1]
     );
+
+    console.log('[getConversation] Params:', userId1, userId2, numericLimit);
+
 
     return (rows as Message[]).reverse();
   }
