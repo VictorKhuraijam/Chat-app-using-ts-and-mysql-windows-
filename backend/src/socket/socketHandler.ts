@@ -10,6 +10,9 @@ interface AuthenticatedSocket extends Socket {
 
 export const handleSocketConnection = (io: Server) => {
   // Socket authentication middleware
+
+  const onlineUsers = new Set<number>()
+
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       const token = socket.handshake.auth.token;
@@ -28,6 +31,8 @@ export const handleSocketConnection = (io: Server) => {
       socket.userId = user.id;
       socket.username = user.username;
 
+      onlineUsers.add(user.id);
+
       // Update user online status
       await UserModel.updateOnlineStatus(user.id, true);
 
@@ -42,6 +47,7 @@ export const handleSocketConnection = (io: Server) => {
 
     // Join user to their personal room
     socket.join(`user_${socket.userId}`);
+    socket.emit('online_users', Array.from(onlineUsers))
 
     io.emit('user_online', {
       userId: socket.userId,
@@ -132,11 +138,14 @@ export const handleSocketConnection = (io: Server) => {
       console.log(`User ${socket.username} disconnected`);
 
       if (socket.userId) {
+
+        onlineUsers.delete(socket.userId);
+
         // Update user offline status
         await UserModel.updateOnlineStatus(socket.userId, false);
 
         // Notify other users about offline status
-        socket.broadcast.emit('user_offline', {
+        io.emit('user_offline', {
           userId: socket.userId,
           username: socket.username
         });

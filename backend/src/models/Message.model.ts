@@ -14,6 +14,7 @@ export interface Message {
 }
 
 export class MessageModel {
+
   static async create(messageData: {
     sender_id: number;
     receiver_id: number;
@@ -120,5 +121,75 @@ export class MessageModel {
     );
 
     return rows as any[];
+  }
+
+   // NEW: Find message by ID
+  static async findById(messageId: number): Promise<Message | null> {
+    const [rows] = await pool.execute(
+      `SELECT m.*,
+              s.username as sender_username,
+              r.username as receiver_username
+       FROM messages m
+       JOIN users s ON m.sender_id = s.id
+       JOIN users r ON m.receiver_id = r.id
+       WHERE m.id = ?`,
+      [messageId]
+    );
+
+    const messages = rows as Message[];
+    return messages.length > 0 ? messages[0] : null;
+  }
+
+  // NEW: Delete message by ID
+  static async deleteById(messageId: number): Promise<boolean> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      'DELETE FROM messages WHERE id = ?',
+      [messageId]
+    );
+
+    return result.affectedRows > 0;
+  }
+
+  // NEW: Delete entire conversation between two users
+  static async deleteConversation(userId1: number, userId2: number): Promise<number> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      `DELETE FROM messages
+       WHERE (sender_id = ? AND receiver_id = ?)
+          OR (sender_id = ? AND receiver_id = ?)`,
+      [userId1, userId2, userId2, userId1]
+    );
+
+    return result.affectedRows;
+  }
+
+  // NEW: Delete all messages sent by a specific user
+  static async deleteAllUserMessages(userId: number): Promise<number> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      'DELETE FROM messages WHERE sender_id = ?',
+      [userId]
+    );
+
+    return result.affectedRows;
+  }
+
+  // NEW: Soft delete message (mark as deleted instead of actually deleting)
+  // You might want to add a 'deleted_at' column to your messages table for this
+  static async softDeleteById(messageId: number): Promise<boolean> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      'UPDATE messages SET deleted_at = NOW() WHERE id = ?',
+      [messageId]
+    );
+
+    return result.affectedRows > 0;
+  }
+
+  // NEW: Delete messages older than specified days
+  static async deleteOldMessages(days: number): Promise<number> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      'DELETE FROM messages WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)',
+      [days]
+    );
+
+    return result.affectedRows;
   }
 }

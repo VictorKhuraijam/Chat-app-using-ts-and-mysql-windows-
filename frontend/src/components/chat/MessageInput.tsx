@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Paperclip, Smile } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
@@ -75,28 +75,70 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  const handleFileUpload = () => {
+    // Placeholder for file upload functionality
+    console.log('File upload clicked');
+  };
+
+  const handleEmojiClick = () => {
+    // Placeholder for emoji picker functionality
+    console.log('Emoji picker clicked');
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
-      <div className="flex space-x-2">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyUp={handleKeyPress}
-          onFocus={handleTyping}
-          onBlur={handleStopTyping}
-          placeholder="Type a message..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          disabled={disabled}
-        />
-        <Button
-          type="submit"
-          disabled={!message.trim() || disabled}
-          className="px-3"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
-    </form>
+    <div className="border-t bg-white">
+      {/* Typing indicator could go here */}
+      <form onSubmit={handleSubmit} className="p-4">
+        <div className="flex items-center space-x-2">
+          {/* File upload button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleFileUpload}
+            disabled={disabled}
+            className="p-2 text-gray-500 hover:text-gray-700"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+
+          {/* Message input */}
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyPress}
+              onFocus={handleTyping}
+              onBlur={handleStopTyping}
+              placeholder="Type a message..."
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              disabled={disabled}
+            />
+
+            {/* Emoji button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleEmojiClick}
+              disabled={disabled}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+            >
+              <Smile className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Send button */}
+          <Button
+            type="submit"
+            disabled={!message.trim() || disabled}
+            className="px-4 py-2"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };

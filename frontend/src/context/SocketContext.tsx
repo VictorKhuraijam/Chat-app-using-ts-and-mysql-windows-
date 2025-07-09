@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { socketService } from '../services/socket';
 import { useAuth } from './AuthContext';
-import type { Message, TypingData } from '../types';
+import type { TypingData } from '../types';
 
   interface SocketContextType {
      socket: Socket | null;
@@ -42,8 +42,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
                 socketConnection.on('disconnect', () => {           setIsConnected(false);
                 });
 
+                socketConnection.on('online_users', (ids: number[]) => {
+                    setOnlineUsers(ids)
+                })
+
                 socketConnection.on('user_online', (data: { userId: number }) => {
-                    setOnlineUsers(prev => [...prev.filter(id => id !== data.userId), data.userId]);
+                    setOnlineUsers(prev => [...new Set([...prev, data.userId])]);
                 });
 
                 socketConnection.on('user_offline', (data: { userId: number }) => {

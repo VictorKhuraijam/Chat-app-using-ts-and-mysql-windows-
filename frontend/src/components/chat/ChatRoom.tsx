@@ -1,33 +1,36 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
+import { ConfirmationDialog } from '../ui/ConfirmationDialog';
 import { UserList } from './UserList';
 import type { User, Message } from '../../types';
 import { messageService } from '../../services/messages';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { Trash2 } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 export const ChatRoom: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const { socket } = useSocket();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { user } = useAuth();
 
   // Handle incoming messages
   const handleNewMessage = useCallback((message: Message) => {
-    if (!message || typeof message !== 'object' || !message.id) {
-    console.warn('Received invalid message over socket:', message);
-    return;
-  }
+        if (!message || typeof message !== 'object' || !message.id) {
+            console.warn('Received invalid message over socket:', message);
+            return;
+        }
 
     setMessages(prev => {
-
         if (!message.id) {
-    console.warn('Skipping message with no ID:', message);
-    return prev;
-    }
+        console.warn('Skipping message with no ID:', message);
+        return prev;
+        }
 
       // Check if message already exists to prevent duplicates
       const messageExists = prev.some(msg => msg.id === message.id);
@@ -49,6 +52,20 @@ export const ChatRoom: React.FC = () => {
       socket.on('new_message', handleNewMessage);
       socket.on('message_sent', handleNewMessage);
 
+       // Handle delete events
+      socket.on('message_deleted', (messageId: number) => {
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      });
+
+      socket.on('conversation_deleted', (data: { userId1: number; userId2: number }) => {
+        if (selectedUser &&
+            ((data.userId1 === user?.id && data.userId2 === selectedUser.id) ||
+             (data.userId1 === selectedUser.id && data.userId2 === user?.id))) {
+          setMessages([]);
+          toast.success('Conversation deleted');
+        }
+      });
+
       // Handle connection events
       socket.on('connect', () => {
         console.log('Socket connected');
@@ -66,12 +83,14 @@ export const ChatRoom: React.FC = () => {
       return () => {
         socket.off('new_message', handleNewMessage);
         socket.off('message_sent', handleNewMessage);
+        socket.off('message_deleted');
+        socket.off('conversation_deleted');
         socket.off('connect');
         socket.off('disconnect');
         socket.off('error');
       };
     }
-  }, [socket, handleNewMessage]);
+  }, [socket, handleNewMessage, selectedUser, user]);
 
   // Load conversation when user changes
   useEffect(() => {
@@ -149,6 +168,50 @@ export const ChatRoom: React.FC = () => {
     }
   };
 
+   const handleDeleteMessage = async (messageId: number) => {
+    try {
+      await messageService.deleteMessage(messageId);
+
+      // Remove message from UI
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+
+      // Emit socket event for real-time update
+      if (socket) {
+        socket.emit('delete_message', { messageId });
+      }
+
+      toast.success('Message deleted');
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error('Failed to delete message');
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!selectedUser) return;
+
+    try {
+      await messageService.deleteConversation(selectedUser.id);
+
+      // Clear messages from UI
+      setMessages([]);
+
+      // Emit socket event for real-time update
+      if (socket) {
+        socket.emit('delete_conversation', {
+          userId1: user?.id,
+          userId2: selectedUser.id
+        });
+      }
+
+      toast.success('Conversation deleted');
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast.error('Failed to delete conversation');
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -173,10 +236,25 @@ export const ChatRoom: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedUser.username}
               </h3>
+
+                {/* Delete Conversation Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Conversation
+              </Button>
             </div>
 
             {/* Messages */}
-            <MessageList messages={messages} loading={loading} />
+            <MessageList
+                messages={messages}
+                loading={loading}
+                onDeleteMessage={handleDeleteMessage}
+              />
 
             {/* Message Input */}
             <MessageInput
@@ -197,6 +275,18 @@ export const ChatRoom: React.FC = () => {
           </div>
         )}
       </div>
+
+       {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConversation}
+        title="Delete Conversation"
+        message={`Are you sure you want to delete this entire conversation with ${selectedUser?.username}? This action cannot be undone.`}
+        confirmText="Delete Conversation"
+        cancelText="Cancel"
+        variant="destructive"
+      />
     </div>
   );
 };

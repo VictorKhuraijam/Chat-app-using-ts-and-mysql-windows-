@@ -107,3 +107,85 @@ export const getUnreadCount = async (req: AuthRequest, res: Response): Promise<v
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const deleteMessageById = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user!.id;
+
+    const messageIdNum = parseInt(messageId);
+    if (isNaN(messageIdNum)) {
+      res.status(400).json({ error: 'Invalid message ID' });
+      return;
+    }
+
+    // Check if message exists and user is authorized to delete it
+    const message = await MessageModel.findById(messageIdNum);
+    if (!message) {
+      res.status(404).json({ error: 'Message not found' });
+      return;
+    }
+
+    // Only sender can delete their own messages
+    if (message.sender_id !== userId) {
+      res.status(403).json({ error: 'Not authorized to delete this message' });
+      return;
+    }
+
+    await MessageModel.deleteById(messageIdNum);
+
+    res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Delete message error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// NEW: Delete entire conversation
+export const deleteConversation = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user!.id;
+
+    const otherUserId = parseInt(userId);
+    if (isNaN(otherUserId)) {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    // Check if other user exists
+    const otherUser = await UserModel.findById(otherUserId);
+    if (!otherUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Delete all messages between the two users
+    const deletedCount = await MessageModel.deleteConversation(currentUserId, otherUserId);
+
+    res.json({
+      message: 'Conversation deleted successfully',
+      deleted_messages: deletedCount
+    });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// NEW: Delete all messages sent by current user (optional - for complete cleanup)
+export const deleteAllUserMessages = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+
+    const deletedCount = await MessageModel.deleteAllUserMessages(userId);
+
+    res.json({
+      message: 'All messages deleted successfully',
+      deleted_messages: deletedCount
+    });
+  } catch (error) {
+    console.error('Delete all user messages error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

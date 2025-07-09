@@ -26,4 +26,19 @@ export const messageService = {
     const response = await api.get('/messages/unread-count');
     return response.data.unread_count;
   },
+
+  async deleteMessage(messageId: number) {
+    const response = await api.delete(`/messages/${messageId}`);
+    return response.data;
+  },
+
+  async deleteConversation(userId: number) {
+    const response = await api.delete(`/messages/conversations/${userId}`);
+    return response.data;
+  },
+
+  async deleteAllMessages() {
+    const response = await api.delete('/messages/user/all');
+    return response.data;
+  }
 };
