@@ -95,28 +95,36 @@ export class MessageModel {
 
   static async getRecentConversations(userId: number): Promise<any[]> {
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT
-        CASE
-          WHEN m.sender_id = ? THEN m.receiver_id
-          ELSE m.sender_id
-        END as other_user_id,
-        CASE
-          WHEN m.sender_id = ? THEN r.username
-          ELSE s.username
-        END as other_username,
-        CASE
-          WHEN m.sender_id = ? THEN r.avatar
-          ELSE s.avatar
-        END as other_avatar,
-        m.content as last_message,
-        m.created_at as last_message_time,
-        COUNT(CASE WHEN m.receiver_id = ? AND m.is_read = FALSE THEN 1 END) as unread_count
-       FROM messages m
-       JOIN users s ON m.sender_id = s.id
-       JOIN users r ON m.receiver_id = r.id
-       WHERE m.sender_id = ? OR m.receiver_id = ?
-       GROUP BY other_user_id, other_username, other_avatar
-       ORDER BY m.created_at DESC`,
+       `
+        SELECT
+          u.id AS other_user_id,
+          u.username AS other_username,
+          u.avatar AS other_avatar,
+          m.content AS last_message,
+          m.created_at AS last_message_time,
+          (
+            SELECT COUNT(*)
+            FROM messages
+            WHERE sender_id = u.id AND receiver_id = ? AND is_read = FALSE
+          ) AS unread_count
+        FROM (
+          SELECT
+            CASE
+              WHEN sender_id = ? THEN receiver_id
+              ELSE sender_id
+            END AS user_id,
+            MAX(created_at) AS last_time
+          FROM messages
+          WHERE sender_id = ? OR receiver_id = ?
+          GROUP BY user_id
+        ) AS recent
+        JOIN users u ON u.id = recent.user_id
+        JOIN messages m ON (
+          ((m.sender_id = ? AND m.receiver_id = u.id) OR (m.sender_id = u.id AND m.receiver_id = ?))
+          AND m.created_at = recent.last_time
+        )
+        ORDER BY m.created_at DESC
+        `,
       [userId, userId, userId, userId, userId, userId]
     );
 

@@ -4,13 +4,14 @@
   "description": "chat app backend using mysql and typescript",
   "main": "index.js",
   "scripts": {
-    "dev" : "nodemon src/server.ts",
+    "dev": "nodemon src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "HoH",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",

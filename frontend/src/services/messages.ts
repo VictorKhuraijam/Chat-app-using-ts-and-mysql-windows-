@@ -18,7 +18,7 @@ export const messageService = {
   },
 
   async markAsRead(messageId: number) {
-    const response = await api.put(`/messages/${messageId}/read`);
+    const response = await api.put(`/messages/read/${messageId}`);
     return response.data;
   },
 

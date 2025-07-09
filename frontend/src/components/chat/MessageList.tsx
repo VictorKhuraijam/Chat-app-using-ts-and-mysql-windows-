@@ -69,9 +69,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               >
                 <p className="text-sm">{message.content}</p>
                  {/* Message metadata */}
-                <div className={`flex items-center justify-between mt-1 text-xs ${
-                  user ? 'text-primary-500' : 'text-gray-500'
-                }`}>
+                <div className={`flex items-center justify-between mt-1 text-xs text-gray-900 ${isOwnMessage ? 'text-primary-50' : "text-gray-500"}`}>
                   <span>{formatTime(message.created_at)}</span>
                   {message.is_read && user && (
                     <span className="ml-2">Read</span>
@@ -86,7 +84,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                       onClick={() => setShowOptionsFor(showOptions ? null : message.id)}
                       className={`p-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
                         user
-                          ? 'bg-primary-500 hover:bg-primary-400 text-white'
+                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                       }`}
                     >

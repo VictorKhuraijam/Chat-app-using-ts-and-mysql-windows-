@@ -92,7 +92,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       { expiresIn: '24h' }
     );
 
-    res.json({
+    console.log("Token :",token)
+    res
+    .json({
       message: 'Login successful',
       token,
       user: {

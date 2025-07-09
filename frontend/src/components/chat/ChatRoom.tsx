@@ -152,13 +152,13 @@ export const ChatRoom: React.FC = () => {
 
       // Emit to socket for real-time delivery
       //this block duplicates msg
-    //   if (socket) {
-    //     socket.emit('send_message', {
-    //       receiver_id: selectedUser.id,
-    //       content,
-    //       message_type: 'text',
-    //     });
-    //   }
+      // if (socket) {
+      //   socket.emit('send_message', {
+      //     receiver_id: selectedUser.id,
+      //     content,
+      //     message_type: 'text',
+      //   });
+      // }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -232,7 +232,7 @@ export const ChatRoom: React.FC = () => {
         {selectedUser ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
+            <div className="flex justify-between p-4 border-b border-gray-200 bg-white">
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedUser.username}
               </h3>
@@ -285,7 +285,7 @@ export const ChatRoom: React.FC = () => {
         message={`Are you sure you want to delete this entire conversation with ${selectedUser?.username}? This action cannot be undone.`}
         confirmText="Delete Conversation"
         cancelText="Cancel"
-        variant="destructive"
+
       />
     </div>
   );
