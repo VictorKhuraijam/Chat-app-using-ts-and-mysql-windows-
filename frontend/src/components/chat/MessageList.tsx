@@ -60,8 +60,9 @@ export const MessageList: React.FC<MessageListProps> = ({
               key={key}
               className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
             >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg relative ${
+              <div className="group relative max-w-xs lg:max-w-md">
+                <div
+                className={` px-4 py-2 rounded-lg relative ${
                   isOwnMessage
                     ? 'bg-primary-600 text-white'
                     : 'bg-white text-gray-900 shadow-sm border border-gray-200'
@@ -84,7 +85,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                       onClick={() => setShowOptionsFor(showOptions ? null : message.id)}
                       className={`p-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
                         user
-                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
+                          ? 'bg-primary-50 hover:bg-primary-600 text-white'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                       }`}
                     >
@@ -106,6 +107,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   </div>
                 )}
 
+              </div>
               </div>
             </div>
           );
