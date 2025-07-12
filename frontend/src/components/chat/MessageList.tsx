@@ -60,7 +60,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               key={key}
               className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="group relative max-w-xs lg:max-w-md">
+              <div className="relative max-w-xs lg:max-w-md">
                 <div
                 className={` px-4 py-2 rounded-lg relative ${
                   isOwnMessage
@@ -76,20 +76,21 @@ export const MessageList: React.FC<MessageListProps> = ({
                     <span className="ml-2">Read</span>
                   )}
                 </div>
-                 {/* Options button for sender's messages */}
-                {canDeleteMessage(message) && (
-                  <div className="absolute -top-2 -right-2">
+                 {/* Three dots button for sender's messages */}
+               {canDeleteMessage(message) && (
+                  <div className="absolute -top-1 -right-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowOptionsFor(showOptions ? null : message.id)}
-                      className={`p-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${
-                        user
-                          ? 'bg-primary-50 hover:bg-primary-600 text-white'
+                      className={`p-2 h-8 w-8 rounded-full shadow-md ${
+                        isOwnMessage
+                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                       }`}
+                      title="Message options"
                     >
-                      <MoreVertical className="h-3 w-3" />
+                      <MoreVertical className="h-4 w-4" />
                     </Button>
 
                     {/* Options dropdown */}
