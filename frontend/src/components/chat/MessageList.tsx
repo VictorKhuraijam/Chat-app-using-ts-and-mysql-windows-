@@ -77,6 +77,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   )}
                 </div>
                  {/* Three dots button for sender's messages */}
+                 {/*need more functionality */}
                {canDeleteMessage(message) && (
                   <div className="absolute -top-1 -right-1">
                     <Button
