@@ -18,7 +18,8 @@ export const MessageList: React.FC<MessageListProps> = ({
  }) => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [showOptionsFor, setShowOptionsFor] = useState<number | null>(null)
+  const [showOptionsFor, setShowOptionsFor] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   console.log("Messages :", messages)
   console.log("Messages Ids",messages.map((m) => m.id))
@@ -26,6 +27,20 @@ export const MessageList: React.FC<MessageListProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowOptionsFor(null);
+      }
+    };
+
+    if (showOptionsFor !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showOptionsFor]);
 
   const handleDeleteClick = (messageId: number) => {
     onDeleteMessage(messageId);
@@ -55,6 +70,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           const isOwnMessage = message.sender_id === user?.id;
           const showOptions = showOptionsFor === message.id;
           const key = message.id ?? (message as any).tempId ?? `fallback-${index}`;
+
           return (
             <div
               key={key}
@@ -62,54 +78,56 @@ export const MessageList: React.FC<MessageListProps> = ({
             >
               <div className="relative max-w-xs lg:max-w-md">
                 <div
-                className={` px-4 py-2 rounded-lg relative ${
-                  isOwnMessage
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                }`}
-              >
-                <p className="text-sm">{message.content}</p>
-                 {/* Message metadata */}
-                <div className={`flex items-center justify-between mt-1 text-xs text-gray-900 ${isOwnMessage ? 'text-primary-50' : "text-gray-500"}`}>
-                  <span>{formatTime(message.created_at)}</span>
-                  {message.is_read && user && (
-                    <span className="ml-2">Read</span>
-                  )}
-                </div>
-                 {/* Three dots button for sender's messages */}
-                 {/*need more functionality */}
-               {canDeleteMessage(message) && (
-                  <div className="absolute -top-1 -right-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowOptionsFor(showOptions ? null : message.id)}
-                      className={`p-2 h-8 w-8 rounded-full shadow-md ${
-                        isOwnMessage
-                          ? 'bg-primary-500 hover:bg-primary-600 text-white'
-                          : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                      }`}
-                      title="Message options"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
+                  className={`px-4 py-2 rounded-lg ${
+                    isOwnMessage
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm">{message.content}</p>
 
-                    {/* Options dropdown */}
-                    {showOptions && (
-                      <div className="absolute right-0 mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10">
+                      {/* Message metadata */}
+                      <div className={`flex items-center justify-between mt-1 text-xs ${isOwnMessage ? 'text-primary-50' : "text-gray-500"}`}>
+                        <span>{formatTime(message.created_at)}</span>
+                        {message.is_read && user && (
+                          <span className="ml-2">Read</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Three dots button inside message bubble */}
+                    {canDeleteMessage(message) && (
+                      <div className="relative" ref={dropdownRef}>
                         <button
-                          onClick={() => handleDeleteClick(message.id)}
-                          className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          onClick={() => setShowOptionsFor(showOptions ? null : message.id)}
+                          className={`p-1 rounded-full transition-colors ${
+                            isOwnMessage
+                              ? 'text-primary-200 hover:text-white hover:bg-primary-700'
+                              : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                          }`}
+                          title="Message options"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                          <MoreVertical className="h-4 w-4" />
                         </button>
+
+                        {/* Options dropdown */}
+                        {showOptions && (
+                          <div className="absolute right-0 top-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-10 min-w-[120px]">
+                            <button
+                              onClick={() => handleDeleteClick(message.id)}
+                              className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-
-              </div>
+                </div>
               </div>
             </div>
           );
