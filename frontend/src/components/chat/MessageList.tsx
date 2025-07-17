@@ -3,7 +3,6 @@ import type { Message } from '../../types';
 import { Trash2, MoreVertical } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatTime } from '../../utils/formatters';
-import { Button } from '../ui/Button';
 
 interface MessageListProps {
   messages: Message[];
