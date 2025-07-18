@@ -23,6 +23,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   console.log("Messages :", messages)
   console.log("Messages Ids",messages.map((m) => m.id))
 
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -50,6 +51,13 @@ export const MessageList: React.FC<MessageListProps> = ({
     return user?.id === message.sender_id;
   };
 
+  console.log("Debug message dates:", messages.map(m => ({
+      id: m.id,
+      created_at: m.created_at,
+      type: typeof m.created_at,
+      formatted: formatTime(m.created_at)
+    })));
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -70,6 +78,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           const showOptions = showOptionsFor === message.id;
           const key = message.id ?? (message as any).tempId ?? `fallback-${index}`;
 
+          console.log("Message created_at:", message.created_at, typeof message.created_at);
           return (
             <div
               key={key}
@@ -87,12 +96,35 @@ export const MessageList: React.FC<MessageListProps> = ({
                     <div className="flex-1">
                       <p className="text-sm">{message.content}</p>
 
+
                       {/* Message metadata */}
                       <div className={`flex items-center justify-between mt-1 text-xs ${isOwnMessage ? 'text-primary-50' : "text-gray-500"}`}>
                         <span>{formatTime(message.created_at)}</span>
-                        {message.is_read && user && (
-                          <span className="ml-2">Read</span>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          {/* Read/Unread indicator for own messages */}
+                          {isOwnMessage && (
+                            <div className="flex items-center">
+                              {message.is_read ? (
+                                <div className="flex items-center">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                                  <span className="text-xs">Read</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full mr-1"></div>
+                                  <span className="text-xs">Sent</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Unread indicator for received messages */}
+                          {!isOwnMessage && !message.is_read && (
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full mr-1"></div>
+                              <span className="text-xs font-semibold">New</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
