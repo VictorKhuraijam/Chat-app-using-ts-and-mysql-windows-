@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Message } from '../../types';
-import { Trash2, MoreVertical } from 'lucide-react';
+import { Trash2, MoreVertical, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatTime } from '../../utils/formatters';
 
@@ -51,6 +51,11 @@ export const MessageList: React.FC<MessageListProps> = ({
     return user?.id === message.sender_id;
   };
 
+
+  const isTemporaryMessage = (message: Message) => {
+    return message.id < 0; // Temporary messages have negative IDs
+  };
+
   console.log("Debug message dates:", messages.map(m => ({
       id: m.id,
       created_at: m.created_at,
@@ -76,7 +81,8 @@ export const MessageList: React.FC<MessageListProps> = ({
         messages.map((message, index) => {
           const isOwnMessage = message.sender_id === user?.id;
           const showOptions = showOptionsFor === message.id;
-          const key = message.id ?? (message as any).tempId ?? `fallback-${index}`;
+           const isTemp = isTemporaryMessage(message);
+          const key = message.id ?? `fallback-${index}`;
 
           console.log("Message created_at:", message.created_at, typeof message.created_at);
           return (
@@ -101,8 +107,16 @@ export const MessageList: React.FC<MessageListProps> = ({
                       <div className={`flex items-center justify-between mt-1 text-xs ${isOwnMessage ? 'text-primary-50' : "text-gray-500"}`}>
                         <span>{formatTime(message.created_at)}</span>
                         <div className="flex items-center space-x-2">
+                            {/* Sending indicator for temporary messages */}
+                          {isTemp && isOwnMessage && (
+                            <div className="flex items-center">
+                              <Clock className="w-3 h-3 mr-1 animate-pulse" />
+                              <span className="text-xs">Sending...</span>
+                            </div>
+                          )}
+
                           {/* Read/Unread indicator for own messages */}
-                          {isOwnMessage && (
+                         {isOwnMessage && !isTemp && (
                             <div className="flex items-center">
                               {message.is_read ? (
                                 <div className="flex items-center">
@@ -117,6 +131,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                               )}
                             </div>
                           )}
+
                           {/* Unread indicator for received messages */}
                           {!isOwnMessage && !message.is_read && (
                             <div className="flex items-center">

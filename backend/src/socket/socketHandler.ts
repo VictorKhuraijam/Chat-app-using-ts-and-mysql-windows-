@@ -98,6 +98,8 @@ export const handleSocketConnection = (io: Server) => {
 
         // Confirm message sent
         socket.emit('message_sent', { messageId: message.id });
+        console.log(`Message sent from ${socket.username} to user ${data.receiver_id}`);
+    
       } catch (error) {
         console.error('Send message error:', error);
         socket.emit('error', { message: 'Failed to send message' });

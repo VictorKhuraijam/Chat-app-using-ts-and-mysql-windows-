@@ -9,6 +9,14 @@ import type { TypingData } from '../types';
      isConnected: boolean;
      onlineUsers: number[];
      typingUsers: TypingData[];
+      // Add methods to emit events
+     sendMessage: (message: any) => void;
+     deleteMessage: (messageId: number, conversationId?: number) => void;
+     joinConversation: (conversationId: number) => void;
+     leaveConversation: (conversationId: number) => void;
+     joinConversationWithUser: (otherUserId: number) => void;
+     markMessageRead: (messageId: number) => void;
+     markConversationRead: (conversationId: number) => void;
     }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -74,11 +82,65 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     }, [isAuthenticated, user]);
     console.log("user socket online user :", onlineUsers)
 
+    // Helper functions to emit events
+    const sendMessage = (message: any) => {
+        if (socket && isConnected) {
+            socket.emit('send_message', message);
+        }
+    };
+
+    const deleteMessage = (messageId: number, conversationId?: number) => {
+        if (socket && isConnected) {
+            socket.emit('delete_message', { messageId, conversationId });
+        }
+    };
+
+    const joinConversation = (conversationId: number) => {
+        if (socket && isConnected) {
+            socket.emit('join_conversation', conversationId);
+        }
+    };
+
+    const leaveConversation = (conversationId: number) => {
+        if (socket && isConnected) {
+            socket.emit('leave_conversation', conversationId);
+        }
+    };
+
+    const joinConversationWithUser = (otherUserId: number) => {
+        if (socket && isConnected) {
+            socket.emit('join_conversation_with_user', otherUserId);
+        }
+    };
+
+    const markMessageRead = (messageId: number) => {
+        if (socket && isConnected) {
+            socket.emit('mark_message_read', messageId);
+        }
+    };
+
+    const markConversationRead = (conversationId: number) => {
+        if (socket && isConnected) {
+            socket.emit('mark_conversation_read', conversationId);
+        }
+    };
+
+    console.log("user socket online user :", onlineUsers);
+
+
+
     const value: SocketContextType = {
         socket,
         isConnected,
         onlineUsers,
         typingUsers,
+        sendMessage,
+        deleteMessage,
+        joinConversation,
+        leaveConversation,
+        joinConversationWithUser,
+        markMessageRead,
+        markConversationRead,
     };
     return (
        <SocketContext.Provider value={value}>
