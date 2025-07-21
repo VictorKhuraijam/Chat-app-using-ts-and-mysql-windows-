@@ -11,12 +11,12 @@ import type { TypingData } from '../types';
      typingUsers: TypingData[];
       // Add methods to emit events
      sendMessage: (message: any) => void;
-     deleteMessage: (messageId: number, conversationId?: number) => void;
-     joinConversation: (conversationId: number) => void;
-     leaveConversation: (conversationId: number) => void;
      joinConversationWithUser: (otherUserId: number) => void;
+     leaveConversationWithUser: (otherUserId: number) => void;
      markMessageRead: (messageId: number) => void;
-     markConversationRead: (conversationId: number) => void;
+     markConversationRead: (otherUserId: number) => void;
+     startTyping: (receiverId: number) => void;
+     stopTyping: (receiverId: number) => void;
     }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -25,7 +25,8 @@ export const useSocket = () => {
     const context = useContext(SocketContext);
     if (!context) {
         throw new Error('useSocket must be used within a SocketProvider');
-     }   return context;
+     }
+     return context;
  };
 
  interface SocketProviderProps {
@@ -44,6 +45,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
             try {
                 const socketConnection = socketService.connect();
                 setSocket(socketConnection);
+
                 socketConnection.on('connect', () => {           setIsConnected(true);
                  });
 
@@ -89,27 +91,27 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         }
     };
 
-    const deleteMessage = (messageId: number, conversationId?: number) => {
-        if (socket && isConnected) {
-            socket.emit('delete_message', { messageId, conversationId });
-        }
-    };
+    // const joinConversation = (conversationId: number) => {
+    //     if (socket && isConnected) {
+    //         socket.emit('join_conversation', conversationId);
+    //     }
+    // };
 
-    const joinConversation = (conversationId: number) => {
-        if (socket && isConnected) {
-            socket.emit('join_conversation', conversationId);
-        }
-    };
-
-    const leaveConversation = (conversationId: number) => {
-        if (socket && isConnected) {
-            socket.emit('leave_conversation', conversationId);
-        }
-    };
+    // const leaveConversation = (conversationId: number) => {
+    //     if (socket && isConnected) {
+    //         socket.emit('leave_conversation', conversationId);
+    //     }
+    // };
 
     const joinConversationWithUser = (otherUserId: number) => {
         if (socket && isConnected) {
-            socket.emit('join_conversation_with_user', otherUserId);
+            socket.emit('join_conversation', otherUserId);
+        }
+    };
+
+    const leaveConversationWithUser = (otherUserId: number) => {
+        if (socket && isConnected) {
+            socket.emit('leave_conversation', otherUserId);
         }
     };
 
@@ -125,6 +127,18 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         }
     };
 
+     const startTyping = (receiverId: number) => {
+        if (socket && isConnected) {
+            socket.emit('typing_start', { receiver_id: receiverId });
+        }
+    };
+
+    const stopTyping = (receiverId: number) => {
+        if (socket && isConnected) {
+            socket.emit('typing_stop', { receiver_id: receiverId });
+        }
+    };
+
     console.log("user socket online user :", onlineUsers);
 
 
@@ -135,12 +149,12 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
         onlineUsers,
         typingUsers,
         sendMessage,
-        deleteMessage,
-        joinConversation,
-        leaveConversation,
         joinConversationWithUser,
+        leaveConversationWithUser,
         markMessageRead,
         markConversationRead,
+        startTyping,
+        stopTyping
     };
     return (
        <SocketContext.Provider value={value}>

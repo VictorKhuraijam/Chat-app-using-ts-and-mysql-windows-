@@ -83,13 +83,22 @@ export const handleSocketConnection = (io: Server) => {
           message_type: data.message_type || 'text'
         });
 
+        // Enhanced message object with all necessary fields
+        const enhancedMessage = {
+          ...message,
+          sender_id: socket.userId!,
+          receiver_id: data.receiver_id,
+          created_at: message.created_at || new Date(),
+          is_read: false
+        };
+
         // Send to conversation room
         const roomId = [socket.userId, data.receiver_id].sort().join('_');
-        io.to(roomId).emit('new_message', message);
+        io.to(roomId).emit('new_message', enhancedMessage);
 
         // Send to receiver's personal room for notifications
         io.to(`user_${data.receiver_id}`).emit('message_notification', {
-          message,
+          message: enhancedMessage,
           sender: {
             id: socket.userId,
             username: socket.username
@@ -97,9 +106,12 @@ export const handleSocketConnection = (io: Server) => {
         });
 
         // Confirm message sent
-        socket.emit('message_sent', { messageId: message.id });
+        socket.emit('message_sent', {
+          messageId: message.id,
+          message: enhancedMessage
+        });
         console.log(`Message sent from ${socket.username} to user ${data.receiver_id}`);
-    
+
       } catch (error) {
         console.error('Send message error:', error);
         socket.emit('error', { message: 'Failed to send message' });

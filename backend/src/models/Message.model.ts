@@ -84,6 +84,13 @@ export class MessageModel {
     );
   }
 
+  static async markConversationAsReadBetweenUsers(readerId: number, senderId: number): Promise<void> {
+    await pool.execute(
+      'UPDATE messages SET is_read = TRUE WHERE receiver_id = ? AND sender_id = ? AND is_read = FALSE',
+      [readerId, senderId]
+    );
+  }
+
   static async getUnreadCount(userId: number): Promise<number> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = FALSE',

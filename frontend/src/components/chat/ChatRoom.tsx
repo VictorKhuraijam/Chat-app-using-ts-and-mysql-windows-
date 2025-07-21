@@ -15,9 +15,9 @@ export const ChatRoom: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
-  const { socket, joinConversationWithUser, leaveConversation } = useSocket();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
+
+  const { socket, joinConversationWithUser, leaveConversationWithUser } = useSocket();
   const { user } = useAuth();
 
   // Handle incoming messages
@@ -27,11 +27,11 @@ export const ChatRoom: React.FC = () => {
             return;
         }
 
-    setMessages(prev => {
-        if (!message.id) {
-        console.warn('Skipping message with no ID:', message);
-        return prev;
-        }
+      setMessages(prev => {
+          if (!message.id) {
+          console.warn('Skipping message with no ID:', message);
+          return prev;
+          }
 
       // Check if message already exists to prevent duplicates
       const messageExists = prev.some(msg => msg.id === message.id);
@@ -76,26 +76,43 @@ export const ChatRoom: React.FC = () => {
     });
   }, []);
 
+  // Handle message deletion from socket
+  const handleMessageDeleted = useCallback((data: { messageId: number; deletedBy: number }) => {
+    console.log('Message deleted via socket:', data);
+    setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+  }, []);
+
+  // Handle conversation deletion from socket
+  const handleConversationDeleted = useCallback((data: { userId1: number; userId2: number }) => {
+    if (selectedUser && user &&
+        ((data.userId1 === user.id && data.userId2 === selectedUser.id) ||
+         (data.userId1 === selectedUser.id && data.userId2 === user.id))) {
+      setMessages([]);
+      toast.success('Conversation deleted');
+    }
+  }, [selectedUser, user]);
 
   // Socket event listeners
   useEffect(() => {
     if (socket) {
       socket.on('new_message', handleNewMessage);
       socket.on('message_sent', handleMessageSent);
+      socket.on('message_deleted', handleMessageDeleted);
+      socket.on('conversation_deleted', handleConversationDeleted);
 
        // Handle delete events
-      socket.on('message_deleted', (data: {messageId: number}) => {
-        setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
-      });
+      // socket.on('message_deleted', (data: {messageId: number}) => {
+      //   setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+      // });
 
-      socket.on('conversation_deleted', (data: { userId1: number; userId2: number }) => {
-        if (selectedUser &&
-            ((data.userId1 === user?.id && data.userId2 === selectedUser.id) ||
-             (data.userId1 === selectedUser.id && data.userId2 === user?.id))) {
-          setMessages([]);
-          toast.success('Conversation deleted');
-        }
-      });
+      // socket.on('conversation_deleted', (data: { userId1: number; userId2: number }) => {
+      //   if (selectedUser &&
+      //       ((data.userId1 === user?.id && data.userId2 === selectedUser.id) ||
+      //        (data.userId1 === selectedUser.id && data.userId2 === user?.id))) {
+      //     setMessages([]);
+      //     toast.success('Conversation deleted');
+      //   }
+      // });
 
       // Handle connection events
       socket.on('connect', () => {
@@ -114,14 +131,14 @@ export const ChatRoom: React.FC = () => {
       return () => {
         socket.off('new_message', handleNewMessage);
         socket.off('message_sent', handleMessageSent);
-        socket.off('message_deleted');
-        socket.off('conversation_deleted');
+        socket.off('message_deleted', handleMessageDeleted);
+        socket.off('conversation_deleted', handleConversationDeleted);
         socket.off('connect');
         socket.off('disconnect');
         socket.off('error');
       };
     }
-  }, [socket, handleNewMessage, handleMessageSent, selectedUser, user]);
+  }, [socket, handleNewMessage, handleMessageSent, handleMessageDeleted, handleConversationDeleted]);
 
   // Load conversation when user changes
   useEffect(() => {
@@ -130,12 +147,16 @@ export const ChatRoom: React.FC = () => {
       joinConversationWithUser(selectedUser.id)
     } else {
       setMessages([]);
-      if(currentConversationId){
-        leaveConversation(currentConversationId);
-        setCurrentConversationId(null)
-      }
+
     }
-  }, [selectedUser, joinConversationWithUser, leaveConversation, currentConversationId]);
+
+     // Cleanup: leave conversation when switching users
+    return () => {
+      if (selectedUser) {
+        leaveConversationWithUser(selectedUser.id);
+      }
+    };
+  }, [selectedUser, joinConversationWithUser, leaveConversationWithUser]);
 
   const loadConversation = async (userId: number) => {
     setLoading(true);
@@ -214,9 +235,9 @@ export const ChatRoom: React.FC = () => {
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
       // Emit socket event for real-time update
-      if (socket) {
-        socket.emit('delete_message', { messageId, conversationId: currentConversationId });
-      }
+      // if (socket) {
+      //   socket.emit('delete_message', { messageId, conversationId: currentConversationId });
+      // }
 
       toast.success('Message deleted');
     } catch (error) {
@@ -246,6 +267,7 @@ export const ChatRoom: React.FC = () => {
           userId2: selectedUser.id
         });
       }
+       // Note: Real-time update for other users will be handled by the socket event from the server after successful deletion
 
       toast.success('Conversation deleted');
       setShowDeleteConfirm(false);
