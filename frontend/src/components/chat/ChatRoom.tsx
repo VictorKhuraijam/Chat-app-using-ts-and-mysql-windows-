@@ -40,36 +40,47 @@ export const ChatRoom: React.FC = () => {
       // Only add message if it's part of current conversation
       if (selectedUser &&
           (message.sender_id === selectedUser.id || message.receiver_id === selectedUser.id)) {
+
+          // IMPORTANT: Don't add the message if current user is the sender
+        // The sender already has the optimistic message, wait for message_sent event instead
+        if (message.sender_id === user?.id) {
+          console.log('Ignoring new_message for own sent message, waiting for message_sent');
+          return prev;
+        }
         return [...prev, message];
       }
 
       return prev;
     });
-  }, [selectedUser]);
+  }, [selectedUser, user]);
 
   // Handle message sent confirmation (for optimistic updates)
-  const handleMessageSent = useCallback((message: Message) => {
+  const handleMessageSent = useCallback((data: { messageId: number, message: Message }) => {
+    console.log('Message sent confirmation:', data);
     setMessages(prev => {
       // Find and replace temporary message with real message
       const tempIndex = prev.findIndex(msg =>
-        msg.content === message.content &&
-        msg.sender_id === message.sender_id &&
-        msg.receiver_id === message.receiver_id &&
+        msg.content === data.message.content &&
+        msg.sender_id === data.message.sender_id &&
+        msg.receiver_id === data.message.receiver_id &&
         typeof msg.id === 'number' && msg.id < 0 // temp IDs are negative
       );
 
       if (tempIndex !== -1) {
         const newMessages = [...prev];
-        newMessages[tempIndex] = message;
-        console.log('Replaced temporary message with real message:', message.id);
+        newMessages[tempIndex] = {
+          ...data.message,
+          created_at: new Date(data.message.created_at) // Ensure proper date object
+        };
+        console.log('Replaced temporary message with real message:', data.message.id);
         return newMessages;
       }
 
       // If no temp message found, check if real message already exists
-      const messageExists = prev.some(msg => msg.id === message.id);
+      const messageExists = prev.some(msg => msg.id === data.message.id);
       if (!messageExists) {
-        console.log('Adding confirmed message:', message.id);
-        return [...prev, message];
+        console.log('Adding confirmed message:', data.message.id);
+        return [...prev, data.message];
       }
 
       return prev;
@@ -172,7 +183,7 @@ export const ChatRoom: React.FC = () => {
   };
 
   const handleSendMessage = async (content: string) => {
-    if (!selectedUser || !user) return;
+    if (!selectedUser || !user || !socket) return;
 
     //Create a temporary message with a negative Id for optimistic UI
     const tempId = -Date.now() //Negative to distinguish from real IDS
@@ -192,13 +203,20 @@ export const ChatRoom: React.FC = () => {
 
     setMessages(prev => [...prev, tempMessage]);
 
+    // Send via socket only - this handles database saving AND real-time delivery
+    // socket.emit('send_message', {
+    //   receiver_id: selectedUser.id,
+    //   content,
+    //   message_type: 'text',
+    // });
+
     try {
-      const { data: message } = await messageService.sendMessage({
-        receiver_id: selectedUser.id,
-        content,
-        message_type: 'text',
-      });
-      console.log("Real Message :", message)
+      // const { data: message } = await messageService.sendMessage({
+      //   receiver_id: selectedUser.id,
+      //   content,
+      //   message_type: 'text',
+      // });
+      // console.log("Real Message :", message)
 
       // Update with real message from server
       // setMessages(prev =>
@@ -211,13 +229,13 @@ export const ChatRoom: React.FC = () => {
 
       // Emit to socket for real-time delivery
       //this block duplicates msg
-      // if (socket) {
-      //   socket.emit('send_message', {
-      //     receiver_id: selectedUser.id,
-      //     content,
-      //     message_type: 'text',
-      //   });
-      // }
+      
+        socket.emit('send_message', {
+          receiver_id: selectedUser.id,
+          content,
+          message_type: 'text',
+        });
+
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
@@ -303,7 +321,8 @@ export const ChatRoom: React.FC = () => {
               </h3>
 
                 {/* Delete Conversation Button */}
-              <Button
+              {messages.length > 0 && (
+                <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -312,6 +331,7 @@ export const ChatRoom: React.FC = () => {
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Conversation
               </Button>
+              )}
             </div>
 
             {/* Messages */}
