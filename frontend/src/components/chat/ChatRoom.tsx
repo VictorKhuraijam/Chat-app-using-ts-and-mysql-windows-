@@ -229,7 +229,7 @@ export const ChatRoom: React.FC = () => {
 
       // Emit to socket for real-time delivery
       //this block duplicates msg
-      
+
         socket.emit('send_message', {
           receiver_id: selectedUser.id,
           content,
@@ -253,9 +253,9 @@ export const ChatRoom: React.FC = () => {
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
       // Emit socket event for real-time update
-      // if (socket) {
-      //   socket.emit('delete_message', { messageId, conversationId: currentConversationId });
-      // }
+      if (socket) {
+        socket.emit('delete_message', { messageId, conversationId: selectedUser?.id });
+      }
 
       toast.success('Message deleted');
     } catch (error) {
