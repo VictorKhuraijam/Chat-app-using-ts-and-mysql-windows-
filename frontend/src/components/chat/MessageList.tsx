@@ -4,7 +4,7 @@ import { Trash2, MoreVertical, Clock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatTime } from '../../utils/formatters';
 
-// read, sent functionality not working
+
 
 interface MessageListProps {
   messages: Message[];
